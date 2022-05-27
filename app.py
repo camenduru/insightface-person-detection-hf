@@ -20,7 +20,7 @@ import onnxruntime as ort
 
 TITLE = 'insightface Person Detection'
 DESCRIPTION = 'This is an unofficial demo for https://github.com/deepinsight/insightface/tree/master/examples/person_detection.'
-ARTICLE = None
+ARTICLE = '<center><img src="https://visitor-badge.glitch.me/badge?page_id=hysts.insightface-person-detection" alt="visitor badge"/></center>'
 
 TOKEN = os.environ['TOKEN']
 
