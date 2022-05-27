@@ -18,9 +18,8 @@ import insightface
 import numpy as np
 import onnxruntime as ort
 
-REPO_URL = 'https://github.com/deepinsight/insightface/tree/master/examples/person_detection'
 TITLE = 'insightface Person Detection'
-DESCRIPTION = f'This is a demo for {REPO_URL}.'
+DESCRIPTION = 'This is an unofficial demo for https://github.com/deepinsight/insightface/tree/master/examples/person_detection.'
 ARTICLE = None
 
 TOKEN = os.environ['TOKEN']
