@@ -100,8 +100,6 @@ def detect(image: np.ndarray, detector) -> np.ndarray:
 
 
 def main():
-    gr.close_all()
-
     args = parse_args()
 
     detector = load_model()
