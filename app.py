@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import argparse
 import functools
 import os
 import pathlib
+import shlex
 import subprocess
 
-if os.environ.get('SYSTEM') == 'spaces':
-    subprocess.call('pip install insightface==0.6.2'.split())
+if os.getenv('SYSTEM') == 'spaces':
+    subprocess.call(shlex.split('pip install insightface==0.6.2'))
 
 import cv2
 import gradio as gr
@@ -20,34 +20,21 @@ import onnxruntime as ort
 
 TITLE = 'insightface Person Detection'
 DESCRIPTION = 'This is an unofficial demo for https://github.com/deepinsight/insightface/tree/master/examples/person_detection.'
-ARTICLE = '<center><img src="https://visitor-badge.glitch.me/badge?page_id=hysts.insightface-person-detection" alt="visitor badge"/></center>'
 
-TOKEN = os.environ['TOKEN']
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--theme', type=str)
-    parser.add_argument('--live', action='store_true')
-    parser.add_argument('--share', action='store_true')
-    parser.add_argument('--port', type=int)
-    parser.add_argument('--disable-queue',
-                        dest='enable_queue',
-                        action='store_false')
-    parser.add_argument('--allow-flagging', type=str, default='never')
-    return parser.parse_args()
+HF_TOKEN = os.getenv('HF_TOKEN')
 
 
 def load_model():
     path = huggingface_hub.hf_hub_download('hysts/insightface',
                                            'models/scrfd_person_2.5g.onnx',
-                                           use_auth_token=TOKEN)
+                                           use_auth_token=HF_TOKEN)
     options = ort.SessionOptions()
     options.intra_op_num_threads = 8
     options.inter_op_num_threads = 8
-    session = ort.InferenceSession(path,
-                                   sess_options=options,
-                                   providers=['CPUExecutionProvider'])
+    session = ort.InferenceSession(
+        path,
+        sess_options=options,
+        providers=['CPUExecutionProvider', 'CUDAExecutionProvider'])
     model = insightface.model_zoo.retinaface.RetinaFace(model_file=path,
                                                         session=session)
     return model
@@ -98,36 +85,19 @@ def detect(image: np.ndarray, detector) -> np.ndarray:
     return res[:, :, ::-1]  # BGR -> RGB
 
 
-def main():
-    args = parse_args()
+detector = load_model()
+detector.prepare(-1, nms_thresh=0.5, input_size=(640, 640))
+func = functools.partial(detect, detector=detector)
 
-    detector = load_model()
-    detector.prepare(-1, nms_thresh=0.5, input_size=(640, 640))
+image_dir = pathlib.Path('images')
+examples = [[path.as_posix()] for path in sorted(image_dir.glob('*.jpg'))]
 
-    func = functools.partial(detect, detector=detector)
-    func = functools.update_wrapper(func, detect)
-
-    image_dir = pathlib.Path('images')
-    examples = [[path.as_posix()] for path in sorted(image_dir.glob('*.jpg'))]
-
-    gr.Interface(
-        func,
-        gr.inputs.Image(type='numpy', label='Input'),
-        gr.outputs.Image(type='numpy', label='Output'),
-        examples=examples,
-        examples_per_page=30,
-        title=TITLE,
-        description=DESCRIPTION,
-        article=ARTICLE,
-        theme=args.theme,
-        allow_flagging=args.allow_flagging,
-        live=args.live,
-    ).launch(
-        enable_queue=args.enable_queue,
-        server_port=args.port,
-        share=args.share,
-    )
-
-
-if __name__ == '__main__':
-    main()
+gr.Interface(
+    fn=func,
+    inputs=gr.Image(label='Input', type='numpy'),
+    outputs=gr.Image(label='Output', type='numpy'),
+    examples=examples,
+    examples_per_page=30,
+    title=TITLE,
+    description=DESCRIPTION,
+).launch(show_api=False)
