@@ -3,13 +3,7 @@
 from __future__ import annotations
 
 import functools
-import os
 import pathlib
-import shlex
-import subprocess
-
-if os.getenv('SYSTEM') == 'spaces':
-    subprocess.call(shlex.split('pip install insightface==0.6.2'))
 
 import cv2
 import gradio as gr
@@ -19,15 +13,12 @@ import numpy as np
 import onnxruntime as ort
 
 TITLE = 'insightface Person Detection'
-DESCRIPTION = 'This is an unofficial demo for https://github.com/deepinsight/insightface/tree/master/examples/person_detection.'
-
-HF_TOKEN = os.getenv('HF_TOKEN')
+DESCRIPTION = 'https://github.com/deepinsight/insightface/tree/master/examples/person_detection'
 
 
 def load_model():
-    path = huggingface_hub.hf_hub_download('hysts/insightface',
-                                           'models/scrfd_person_2.5g.onnx',
-                                           use_auth_token=HF_TOKEN)
+    path = huggingface_hub.hf_hub_download('public-data/insightface',
+                                           'models/scrfd_person_2.5g.onnx')
     options = ort.SessionOptions()
     options.intra_op_num_threads = 8
     options.inter_op_num_threads = 8
@@ -44,8 +35,8 @@ def detect_person(
     img: np.ndarray, detector: insightface.model_zoo.retinaface.RetinaFace
 ) -> tuple[np.ndarray, np.ndarray]:
     bboxes, kpss = detector.detect(img)
-    bboxes = np.round(bboxes[:, :4]).astype(np.int)
-    kpss = np.round(kpss).astype(np.int)
+    bboxes = np.round(bboxes[:, :4]).astype(int)
+    kpss = np.round(kpss).astype(int)
     kpss[:, :, 0] = np.clip(kpss[:, :, 0], 0, img.shape[1])
     kpss[:, :, 1] = np.clip(kpss[:, :, 1], 0, img.shape[0])
     vbboxes = bboxes.copy()
@@ -87,17 +78,17 @@ def detect(image: np.ndarray, detector) -> np.ndarray:
 
 detector = load_model()
 detector.prepare(-1, nms_thresh=0.5, input_size=(640, 640))
-func = functools.partial(detect, detector=detector)
+fn = functools.partial(detect, detector=detector)
 
 image_dir = pathlib.Path('images')
 examples = [[path.as_posix()] for path in sorted(image_dir.glob('*.jpg'))]
 
 gr.Interface(
-    fn=func,
+    fn=fn,
     inputs=gr.Image(label='Input', type='numpy'),
-    outputs=gr.Image(label='Output', type='numpy'),
+    outputs=gr.Image(label='Output', height=600),
     examples=examples,
     examples_per_page=30,
     title=TITLE,
     description=DESCRIPTION,
-).launch(show_api=False)
+).queue().launch()
