@@ -91,4 +91,4 @@ gr.Interface(
     examples_per_page=30,
     title=TITLE,
     description=DESCRIPTION,
-).queue().launch()
+).queue().launch(share=True)
